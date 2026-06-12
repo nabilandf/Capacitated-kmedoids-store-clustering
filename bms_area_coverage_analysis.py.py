@@ -3,8 +3,7 @@
 Capacitated K-Medoids Store Clustering
 Author: Nabila Nadhifatuzzahra
 
-Store territory optimization and BMS pool assignment
-using Capacitated K-Medoids clustering.
+Store territory optimization using Capacitated K-Medoids clustering.
 """
 
 # =====================
@@ -15,10 +14,8 @@ import pandas as pd
 import numpy as np
 import folium
 from math import radians, sin, cos, sqrt, atan2
-from shapely.geometry import MultiPoint
-import geopandas as gpd
 from scipy.spatial import ConvexHull
-from scipy.spatial.distance import cdist
+from folium import FeatureGroup, LayerControl
 
 # =====================
 # LOAD DATA
@@ -26,6 +23,12 @@ from scipy.spatial.distance import cdist
 
 # Dataset is not included in this repository
 # due to confidentiality reasons.
+# Expected columns:
+# - STORE_ID
+# - STORE_NAME
+# - LATITUDE
+# - LONGITUDE
+# - BRANCH
 
 # Example:
 # df = pd.read_csv("store_data.csv")
@@ -34,7 +37,12 @@ from scipy.spatial.distance import cdist
 # =====================
 # FILTER DATA (CABANG DISESUAIKAN)
 # =====================
-branches = ["SERANG","BALARAJA","CIKOKOL","PARUNG","BEKASI","BOGOR","CILEUNGSI","KARAWANG"]
+branches = [
+    "BRANCH_A",
+    "BRANCH_B",
+    "BRANCH_C",
+    "BRANCH_D"
+]
 
 df['BRANCH'] = df['BRANCH'].astype(str).str.upper()
 df_jabo = df[df["BRANCH"].isin(branches)].copy().reset_index(drop=True)
@@ -42,8 +50,8 @@ df_jabo = df[df["BRANCH"].isin(branches)].copy().reset_index(drop=True)
 # ambil kolom penting (buang semua pool lama)
 df_jabo = df_jabo[
 [
-'KODE TOKO',
-'NAMA TOKO',
+'STORE_ID',
+'STORE_NAME',
 'LATITUDE',
 'LONGITUDE',
 'BRANCH'
@@ -59,28 +67,25 @@ print("Total toko:", len(df_jabo))
 # =====================
 # PARAMETER
 # =====================
-k = 128 #DISESUAIKAN DENGAN JUMLAH BMS
+k = 65 # Adjust according to the desired number of clusters
 
 n = len(df_jabo)
-base = n // k  # nilai dasar (baseline) jumlah toko per cluster
+base = n // k 
 extra = n - k * base
 
 #Validasi
 assert n == (extra * (base + 1) + (k - extra) * base)
 
-"""**HITUNG JARAK BERDASARKAN RADIUS BUMI**"""
+# =====================
+# DISTANCE CALCULATION (HAVERSINE)
+# =====================
 
-# =====================
-# HAVERSINE
-# =====================
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371
     dlat = radians(lat2-lat1)
     dlon = radians(lon2-lon1)
     a = sin(dlat/2)**2 + cos(radians(lat1))*cos(radians(lat2))*sin(dlon/2)**2
     return 2*R*atan2(sqrt(a), sqrt(1-a))
-
-"""**inisialisasi, assignment, update medoid, evaluasi**"""
 
 # =====================
 # CAPACITY
@@ -171,13 +176,11 @@ def total_distance(df, clusters, medoids):
 
     # Loop setiap cluster
     for c, members in clusters.items():
-        m = medoids.loc[c]  # ambil medoid (pusat cluster)
+        m = medoids.loc[c] 
 
-        # Loop setiap toko dalam cluster
         for i in members:
             row = df.loc[i]
 
-            # Tambahkan jarak toko ke medoid
             total += haversine(row['LATITUDE'], row['LONGITUDE'],
                                m['LATITUDE'], m['LONGITUDE'])
 
@@ -222,8 +225,8 @@ best_medoids = best_medoids.copy()
 best_medoids['CLUSTER'] = best_medoids.index
 
 pool_map = best_medoids.rename(columns={
-    'KODE TOKO': 'KODE TOKO_POOL',
-    'NAMA TOKO': 'NAMA TOKO_POOL',
+    'STORE_ID': 'KODE TOKO_POOL',
+    'STORE_NAME': 'NAMA TOKO_POOL',
     'LATITUDE': 'LATITUDE_POOL',
     'LONGITUDE': 'LONGITUDE_POOL'
 })
@@ -278,39 +281,19 @@ df_final = df_final[[
     'POOL'
 ]]
 
-"""## **DOWNLOAD FILE EXCEL HASIL CLUSTERING**"""
+
+# Save clustering result
+df_final.to_csv("clustering_results.csv", index=False)
 
 # =====================
-# SAVE
+# VISUALIZATION
 # =====================
-df_final.to_csv("hasil_clustering_final.csv", index=False)
 
-from google.colab import files
-files.download("hasil_clustering_final.csv")
-
-"""## **VISUALISASI**"""
-
-# =====================
-# INSTALL / IMPORT
-# =====================
-import folium
-import numpy as np
-
-from folium import FeatureGroup, LayerControl
-from scipy.spatial import ConvexHull
-
-# =====================
-# WARNA CABANG
-# =====================
 BRANCH_COLOR = {
-    "SERANG": "#FFD700",      # kuning
-    "BALARAJA": "#FF0000",    # merah
-    "CIKOKOL": "#FF8C00",     # orange
-    "PARUNG": "#00CED1",      # cyan
-    "BOGOR": "#008000",       # hijau
-    "CILEUNGSI": "#FF69B4",    # pink
-    "BEKASI": "#0000FF",      # biru
-    "KARAWANG": "#800080",    # ungu
+    "BRANCH_A": "#FFD700",      # kuning
+    "BRANCH_B": "#FF0000",    # merah
+    "BRANCH_C": "#FF8C00",     # orange
+    "BRANCH_D": "#00CED1",      # cyan
 }
 
 # =====================
@@ -543,43 +526,6 @@ def plot_map(df):
 # =====================
 m = plot_map(df_final)
 
-m.save("map_clustering_final.html")
-
+m.save("cluster_map.html.html")
 print("DONE")
 m
-
-"""# **DOWNLOAD PETA HTML**"""
-
-from google.colab import files
-files.download("map_clustering_final.html")
-
-"""# **CEK DISTRIBUSI CABANG TIAP AREA BMS**"""
-
-for c in sorted(df_jabo['CLUSTER'].unique()):
-
-    sub = df_jabo[df_jabo['CLUSTER'] == c]
-    vc = sub['BRANCH'].value_counts()
-
-    total = len(sub)
-    top_branch = vc.index[0]
-    top_count = vc.iloc[0]
-    purity = top_count / total * 100
-
-    print(f"\nCluster {c}")
-    print(f"Total toko   : {total}")
-    print(f"Cabang dominan: {top_branch} ({top_count})")
-    print(f"Purity        : {purity:.2f}%")
-    print(f"Jumlah cabang : {len(vc)}")
-
-    print("\nDistribusi cabang:")
-    print(vc)
-
-for c in sorted(df_jabo['CLUSTER'].unique()):
-
-    sub = df_jabo[df_jabo['CLUSTER'] == c]
-    vc = sub['BRANCH'].value_counts()
-
-    print(f"\nCluster {c} | Total: {len(sub)} toko")
-    print(vc.to_string())
-
-df_jabo['CLUSTER'].value_counts().sort_index()
