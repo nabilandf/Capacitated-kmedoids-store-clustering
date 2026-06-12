@@ -1,6 +1,6 @@
 # Capacitated K-Medoids Store Clustering
 
-Capacitated K-Medoids clustering for balanced BMS territory assignment and spatial coverage optimization.
+Capacitated K-Medoids clustering for balanced territory assignment and spatial coverage optimization.
 
 ## Project Overview
 
