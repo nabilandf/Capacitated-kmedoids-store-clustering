@@ -7,8 +7,9 @@ Store territory optimization and BMS pool assignment
 using Capacitated K-Medoids clustering.
 """
 
-## **IMPORT LIBRARY**
-"""
+# =====================
+# IMPORT LIBRARIES
+# =====================
 
 import pandas as pd
 import numpy as np
@@ -19,39 +20,16 @@ import geopandas as gpd
 from scipy.spatial import ConvexHull
 from scipy.spatial.distance import cdist
 
+# =====================
+# LOAD DATA
+# =====================
 
-#Import data from spreadsheets
-url = "URL"
-df = pd.read_csv(url)
-df
+# Dataset is not included in this repository
+# due to confidentiality reasons.
 
-"""# **IMPORT DATA (PRIVATE FILE)**"""
+# Example:
+# df = pd.read_csv("store_data.csv")
 
-!pip install --quiet gspread pandas
-
-from google.colab import auth
-auth.authenticate_user()
-
-import gspread
-import pandas as pd
-from google.auth import default
-
-creds, _ = default()
-gc = gspread.authorize(creds)
-
-#Ubah Link
-url = "URL"
-sh = gc.open_by_url(url)
-ws = sh.get_worksheet_by_id(UNIQ CODE)
-
-data = ws.get_all_records()
-df = pd.DataFrame(data)
-df.head() #MENAMPILKAN DATA FRAME
-
-"""## **SERANG-KARAWANG**
-
-**FILTER CABANG**
-"""
 
 # =====================
 # FILTER DATA (CABANG DISESUAIKAN)
@@ -62,7 +40,15 @@ df['BRANCH'] = df['BRANCH'].astype(str).str.upper()
 df_jabo = df[df["BRANCH"].isin(branches)].copy().reset_index(drop=True)
 
 # ambil kolom penting (buang semua pool lama)
-df_jabo = df_jabo[['KODE TOKO','NAMA TOKO','LATITUDE','LONGITUDE', 'BRANCH','NAMA BMS','NIK BMS']].dropna().reset_index(drop=True)
+df_jabo = df_jabo[
+[
+'KODE TOKO',
+'NAMA TOKO',
+'LATITUDE',
+'LONGITUDE',
+'BRANCH'
+]
+].dropna().reset_index(drop=True)
 
 print("Total toko:", len(df_jabo))
 
